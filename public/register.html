@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Station</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f4;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+        }
+
+        .form-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            width: 40%;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="file"],
+        .form-group select {
+            width: 55%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .submit-button {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .submit-button input[type="submit"] {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .submit-button input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        .password-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .password-container input[type="password"] {
+            width: 85%;
+        }
+
+        .password-container .eye-icon {
+            position: absolute;
+            right: 10px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 100%;
+                margin: 10px;
+            }
+            .form-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .form-group label, 
+            .form-group input[type="text"],
+            .form-group input[type="file"],
+            .form-group select {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Register Station</h1>
+
+    <form id="registrationForm">
+        <div class="container">
+            <h2>Officer's Details</h2>
+            <div class="form-group">
+                <label for="officerId">Officer ID Number:</label>
+                <input type="text" id="officerId" name="officerId" required>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" readonly required>
+            </div>
+
+            <div class="form-group">
+                <label for="officerName">Officer Name:</label>
+                <input type="text" id="officerName" name="officerName" required>
+            </div>
+
+            <div class="form-group">
+                <label for="officerIdProof">Officer ID Proof:</label>
+                <input type="file" id="officerIdProof" name="officerIdProof" required>
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>Station Details</h2>
+
+            <div class="form-group">
+                <label for="stationCode">Station Code:</label>
+                <select id="stationCode" name="stationCode" required>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="stationName">Station Name:</label>
+                <select id="stationName" name="stationName" disabled required>
+                    <!-- Options will be populated based on selected station code -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="stationCity">Station City:</label>
+                <select id="stationCity" name="stationCity" disabled required>
+                    <!-- Options will be populated based on selected station code -->
+                </select>
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>Account Details</h2>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" required>
+                    <span class="eye-icon" onclick="togglePasswordVisibility('password')"></span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password:</label>
+                <div class="password-container">
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    <span class="eye-icon" onclick="togglePasswordVisibility('confirmPassword')"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="submit-button">
+            <input type="submit" value="Submit">
+        </div>
+
+        <div id="message" style="text-align: center; color: red; margin-top: 10px;"></div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <p>Already have an account? <a href="login.html">CLICK HERE</a></p>
+        </div>
+    </form>
+
+    <script>
+        const stationData = [
+            { code: "SBC", name: "Bengaluru City", city: "Bengaluru" },
+            { code: "MAS", name: "Chennai Central", city: "Chennai" },
+            { code: "CSTM", name: "Mumbai CSMT", city: "Mumbai" },
+            { code: "NDLS", name: "New Delhi", city: "Delhi" },
+            { code: "MSEC", name: "Mepco Schlenk Engineering College", city: "Sivakasi" }
+            // Add more station data as needed
+        ];
+
+        const stationCodeSelect = document.getElementById('stationCode');
+        const stationNameSelect = document.getElementById('stationName');
+        const stationCitySelect = document.getElementById('stationCity');
+        const officerIdInput = document.getElementById('officerId');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const messageDiv = document.getElementById('message');
+
+        function populateStationCodeDropdown() {
+            stationData.forEach(station => {
+                const option = document.createElement('option');
+                option.value = station.code;
+                option.textContent = station.code;
+                stationCodeSelect.appendChild(option);
+            });
+        }
+
+        function updateStationDetails() {
+            const selectedCode = stationCodeSelect.value;
+            const selectedStation = stationData.find(station => station.code === selectedCode);
+
+            stationNameSelect.innerHTML = '';
+            stationCitySelect.innerHTML = '';
+
+            if (selectedStation) {
+                stationNameSelect.disabled = false;
+                stationCitySelect.disabled = false;
+
+                const nameOption = document.createElement('option');
+                nameOption.value = selectedStation.name;
+                nameOption.textContent = selectedStation.name;
+                stationNameSelect.appendChild(nameOption);
+
+                const cityOption = document.createElement('option');
+                cityOption.value = selectedStation.city;
+                cityOption.textContent = selectedStation.city;
+                stationCitySelect.appendChild(cityOption);
+            } else {
+                stationNameSelect.disabled = true;
+                stationCitySelect.disabled = true;
+            }
+        }
+
+        function togglePasswordVisibility(id) {
+            const passwordInput = document.getElementById(id);
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+            } else {
+                passwordInput.type = 'password';
+            }
+        }
+
+        function updateUsername() {
+            const officerId = officerIdInput.value;
+            if (officerId) {
+                usernameInput.value = `user_${officerId}`;
+            } else {
+                usernameInput.value = '';
+            }
+        }
+
+        function validateForm() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (password !== confirmPassword) {
+                messageDiv.textContent = 'Passwords do not match.';
+                return false;
+            }
+            messageDiv.textContent = '';
+            return true;
+        }
+
+        stationCodeSelect.addEventListener('change', updateStationDetails);
+        officerIdInput.addEventListener('input', updateUsername);
+
+        document.getElementById('registrationForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!validateForm()) {
+                return;
+            }
+
+            const formData = new FormData(this);
+
+            fetch('http://localhost:3000/register', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())  // Parse response as JSON
+            .then(result => {
+                if (result.success) {
+                    messageDiv.style.color = 'green';
+                    messageDiv.textContent = result.message;
+
+                    // Redirect to login after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    messageDiv.style.color = 'red';
+                    messageDiv.textContent = result.message;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                messageDiv.style.color = 'red';
+                messageDiv.textContent = 'Error registering. Please try again.';
+            });
+        });
+
+        populateStationCodeDropdown();
+    </script>
+</body>
+</html>

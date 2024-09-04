@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Officer Website</title>
+    <link rel="stylesheet" href="dist/leaflet.css" />
+    <link rel="stylesheet" href="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.css" />
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px;
+            background-color: #061d84b0;
+            z-index: 1000;
+            border-bottom: 1px solid #ddd;
+        }
+        #title {
+            font-size: 20px;
+            font-weight: bold;
+            color:aliceblue;
+        }
+        #buttons-container {
+            display: flex;
+        }
+        .button {
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.872);
+            font-weight: bold;
+            color:#061d84e7;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        #map {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        #finishButton{
+            position: absolute;
+            bottom: 20px;
+            left:5%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 10px;
+            background-color: #061d84e7;
+            color:white;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        #saveButton {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 10px;
+            background-color: #061d84e7;
+            color:white;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .popup-content {
+            font-size: 16px;
+            text-align: center;
+        }
+        .popup-content p {
+            margin: 0;
+            padding: 0 0 10px;
+        }
+        .popup-content select {
+            width: 100%;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .popup-content button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .popup-content button:hover {
+            background-color: #0056b3;
+        }
+
+        .modal {
+        display: none; 
+        position: fixed; 
+        z-index: 1000; 
+        left: 0;
+        top: 0;
+        width: 100%; 
+        height: 100%; 
+        overflow: auto; 
+        background-color: rgb(0,0,0); 
+        background-color: rgba(0,0,0,0.4); 
+    }
+
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto; 
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%; 
+    }
+
+  
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .modal-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 10px;
+    }
+
+    .modal-button-yes {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .modal-button-no {
+        background-color: #ccc;
+        color: black;
+    }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div id="title">Tirunelveli Railway Station</div>
+        <div id="buttons-container">
+            <button class="button" id="addFacilityButton">Add Facility</button>
+            <button class="button" id="addRoutesButton">Add Routes</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+    <button id="finishButton">Finish Drawing</button>
+    <button id="saveButton">Save</button>
+
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p>Is the facility closed?</p>
+            <button id="modalYes" class="modal-button modal-button-yes">Yes</button>
+            <button id="modalNo" class="modal-button modal-button-no">No</button>
+        </div>
+    </div>
+
+    <script src="dist/leaflet.js"></script>
+
+
+    <script>
+        const markerData = new Map();
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 22,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        const satelliteLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
+                maxZoom: 22,
+                subdomains:['mt0','mt1','mt2','mt3']
+        });
+
+        const streetLayer =  L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
+                maxZoom: 22,
+                subdomains:['mt0','mt1','mt2','mt3']
+        });
+
+        const facilityLayerGroup = L.layerGroup().addTo(map);
+        var routeLayerGroup = L.layerGroup().addTo(map);
+
+        streetLayer.addTo(map);
+
+        const baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "Satellite": satelliteLayer,
+            "Street View": streetLayer
+        };
+
+        const overlayMaps = {
+            "Facilities": facilityLayerGroup,
+            "Routes":routeLayerGroup
+        };
+
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
+
+        const facilityIcons = {
+            "Ticket Counter": 'icons/ticketcounter.png',
+            "Water Tank": 'icons/watertank.png',
+            "ATM": 'icons/atm.png',
+            "Waiting Hall": 'icons/waitinghall.png',
+            "Rest Room": 'icons/restroom.png',
+            "Entry":'icons/entry.png',
+            "Escalator":'icons/escalator.png',
+            "Exit":'icons/exit.png',
+            "Food Court":'icons/foodcourt.png',
+            "Cafeteria":'icons/cafe.png',
+            "Help Desk":'icons/helpdesk.png',
+            "Parcel Office":'icons/parceloffice.png',
+            "Store":'icons/store.png'
+        };
+
+        function showFacilityPopup(e) {
+            const popupContent = `
+                <div class="popup-content">
+                    <p>Select the facility type:</p>
+                    <select id="facilityType">
+                        <option value="Ticket Counter">Ticket Counter</option>
+                        <option value="Water Tank">Water Tank</option>
+                        <option value="ATM">ATM</option>
+                        <option value="Waiting Hall">Waiting Hall</option>
+                        <option value="Rest Room">Rest Room</option>
+                        <option value="Entry">Entry</option>
+                        <option value="Exit">Exit</option>
+                        <option value="Escalator">Escalator</option>
+                        <option value="Food Court">Food Court</option>
+                        <option value="Cafeteria">Cafeteria</option>
+                        <option value="Parcel Office">Parcel Office</option>
+                        <option value="Store">Store</option>
+                        <option value="Help Desk">Help Desk</option>
+                    </select>
+                    <button id="submitFacility">Ok</button>
+                </div>
+            `;
+
+            const popup = L.popup()
+                .setLatLng(e.latlng)
+                .setContent(popupContent)
+                .openOn(map);
+
+            const marker = L.marker(e.latlng).addTo(facilityLayerGroup);
+
+            document.getElementById('submitFacility').addEventListener('click', function() {
+                const facilityType = document.getElementById('facilityType').value;
+                const iconUrl = facilityIcons[facilityType] || 'icons/map.png';
+
+                marker.setIcon(L.icon({
+                    iconUrl: iconUrl,
+                    iconSize: [50, 50],
+                    iconAnchor: [16, 32],
+                    popupAnchor: [0, -32]
+                }));
+                
+                marker.bindPopup(`<strong>${facilityType}</strong>`).openPopup();
+
+                marker.on('click', function() {
+
+                    const storedFacilityType = markerData.get(marker) || facilityType;
+                    const markerPopupContent = `
+                        <div class="popup-content">
+                            <p><strong>${storedFacilityType}</strong></p>
+                            <button id="updateFacility">Update</button>
+                            <button id="deleteFacility">Delete</button>
+                        </div>
+                    `;
+                    marker.bindPopup(markerPopupContent).openPopup();
+                });
+                map.closePopup();
+            });
+        }
+
+        document.getElementById('addFacilityButton').addEventListener('click', function() {
+            map.locate({ setView: true, maxZoom: 16 });
+            map.once('locationfound', function(e) {
+                showFacilityPopup(e);
+            });
+        });
+
+        function showConfirmationModal(callback) {
+        const modal = document.getElementById('confirmationModal');
+        const btnYes = document.getElementById('modalYes');
+        const btnNo = document.getElementById('modalNo');
+        const span = document.getElementsByClassName('close')[0];
+
+        modal.style.display = 'block';
+
+        btnYes.onclick = function() {
+            modal.style.display = 'none';
+            callback(true); 
+        };
+
+        btnNo.onclick = function() {
+            modal.style.display = 'none';
+            callback(false); 
+        };
+
+        span.onclick = function() {
+            modal.style.display = 'none';
+        };
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+    }
+
+        map.on('popupopen', function(e) {
+            const popup = e.popup;
+            const updateButton = popup.getElement().querySelector('#updateFacility');
+            const deleteButton = popup.getElement().querySelector('#deleteFacility');
+
+            if (updateButton) {
+                updateButton.addEventListener('click', function() {
+                    showConfirmationModal(function(isClosed) {
+                        const marker = popup._source;
+                            const currentContent = marker.getPopup().getContent();
+                            const currentFacilityTypeMatch = currentContent.match(/<strong>([^<]+)<\/strong>/);
+                            const currentFacilityType = currentFacilityTypeMatch ? currentFacilityTypeMatch[1] : '';
+                            
+                        if (isClosed) {
+                            const updatedText = `${currentFacilityType} (Closed)`;
+                            markerData.set(marker, updatedText);
+                            marker.bindPopup(`<div class="popup-content">
+                                <p><strong>${updatedText}</strong></p>
+                                <button id="updateFacility">Update</button>
+                                <button id="deleteFacility">Delete</button>
+                            </div>`);
+                            map.closePopup();
+                        }
+                        else{
+                            const updatedText=currentFacilityType.replace(/\s*\(Closed\)$/, '');
+                            markerData.set(marker, updatedText);
+                            marker.bindPopup(`<div class="popup-content">
+                                <p><strong>${updatedText}</strong></p>
+                                <button id="updateFacility">Update</button>
+                                <button id="deleteFacility">Delete</button>
+                            </div>`);
+                            map.closePopup();
+                        }
+                    });
+                });
+            }
+            if (deleteButton) {
+                deleteButton.addEventListener('click', function() {
+                    if (popup._source) {
+                        facilityLayerGroup.removeLayer(popup._source);
+                        map.closePopup(); 
+                    }
+                });
+            }
+        });
+
+        function markersToGeoJSON() {
+        const features = [];
+
+        // Add facility markers
+        facilityLayerGroup.eachLayer(function(layer) {
+            const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
+            features.push({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
+                },
+                properties: {
+                    facilityType: facilityType
+                }
+            });
+        });
+
+        // Add route polylines
+        routeLayerGroup.eachLayer(function(layer) {
+            if (layer instanceof L.Polyline) {
+                features.push({
+                    type: "Feature",
+                    geometry: {
+                        type: "LineString",
+                        coordinates: layer.getLatLngs().map(latlng => [latlng.lng, latlng.lat])
+                    },
+                    properties: {
+                        type: "Route"
+                    }
+                });
+            }
+        });
+
+        return {
+            type: "FeatureCollection",
+            features: features
+        };
+    }
+
+    // Function to download the GeoJSON file
+    function downloadGeoJSON() {
+        const geojson = markersToGeoJSON();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "map_data.geojson");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    document.getElementById('saveButton').addEventListener('click', downloadGeoJSON);
+
+        //Routes
+
+        const finishButton=document.getElementById('finishButton');
+        finishButton.style.display='none';
+
+        var latlngs = [];
+        var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup);
+        var lastLatLng = null;
+        
+
+        document.getElementById('addRoutesButton').addEventListener('click', function() {
+            map.locate({ setView: true, maxZoom: 20 });
+
+            map.on('locationfound', function(e) {
+                finishButton.style.display='block';
+                document.getElementById('saveButton').disabled = false;
+            var latlng = [e.latitude, e.longitude];
+
+            // Add the initial location to the path
+            if (latlngs.length === 0) {
+                latlngs.push(latlng);
+                polyline.setLatLngs(latlngs);
+            }
+
+            // Store only when moved at least 0.5 meters
+            if (!lastLatLng || calculateDistance(lastLatLng, latlng) >= 0.5) {
+                latlngs.push(latlng);
+                polyline.setLatLngs(latlngs); // Update the polyline with new latlngs
+                lastLatLng = latlng; // Update last saved location
+            }
+
+            // Ensure the polyline is visible by updating the map view if needed
+            map.setView(latlng, map.getZoom());
+        });
+
+        map.on('locationerror', function() {
+            alert("Location access denied.");
+        });
+
+        });
+
+
+        function calculateDistance(latlng1, latlng2) {
+            var R = 6371000; // Radius of the Earth in meters
+            var dLat = (latlng2[0] - latlng1[0]) * Math.PI / 180;
+            var dLng = (latlng2[1] - latlng1[1]) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(latlng1[0] * Math.PI / 180) * Math.cos(latlng2[0] * Math.PI / 180) *
+                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        document.getElementById('finishButton').onclick = function() {
+            map.stopLocate(); // Stop tracking the location
+            document.getElementById('saveButton').disabled = true; // Enable the save button
+            alert("Drawing finished.");
+            finishButton.style.display='none';
+            
+        };
+
+        function onLocationFound(e) {
+            var latlng = [e.latitude, e.longitude];
+
+            if (latlngs.length === 0 || calculateDistance(latlngs[latlngs.length - 1], latlng) >= 0.5) {
+                latlngs.push(latlng);
+                polyline.setLatLngs(latlngs);
+                lastLatLng = latlng;
+            }
+
+            map.setView(latlng, map.getZoom());
+        }
+
+    </script>
+</body>
+</html>
