@@ -457,7 +457,7 @@
 
             map.on('locationfound', function(e) {
                 finishButton.style.display='block';
-                document.getElementById('saveButton').disabled = false;
+                document.getElementById('saveButton').disabled = true;
             var latlng = [e.latitude, e.longitude];
 
             // Add the initial location to the path
@@ -497,7 +497,7 @@
 
         document.getElementById('finishButton').onclick = function() {
             map.stopLocate(); // Stop tracking the location
-            document.getElementById('saveButton').disabled = true; // Enable the save button
+            document.getElementById('saveButton').disabled = false; // Enable the save button
             alert("Drawing finished.");
             finishButton.style.display='none';
             
