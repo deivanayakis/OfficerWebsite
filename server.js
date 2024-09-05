@@ -63,7 +63,7 @@ app.post('/login', async (req, res) => {
         const officer = await collection.findOne({ username: username, password: password });
 
         if (officer) {
-            res.send({ success: true, message: 'Login successful' });
+            res.send({ success: true, message: 'Login successful', stationCode: officer.stationCode });
         } else {
             res.status(401).send({ success: false, message: 'Invalid username or password' });
         }

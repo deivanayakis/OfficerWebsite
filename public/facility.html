@@ -18,7 +18,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 7px;
-            background-color: #061d84b0;
+            background-color: rgba(12, 12, 68, 0.875); 
             z-index: 1000;
             border-bottom: 1px solid #ddd;
         }
@@ -191,8 +191,25 @@
 
 
     <script>
-        const markerData = new Map();
-        const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+
+        //Station name
+        function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+    }
+        const stationCode = getQueryParam('stationCode');
+
+    // Display stationName
+    if (stationCode) {
+        const header = document.getElementById('title');
+        header.textContent = `${stationCode} Railway Station`;
+    }
+
+
+//Map
+         const markerData = new Map();
+         const map = L.map('map');
 
         const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 22,
@@ -213,6 +230,8 @@
         var routeLayerGroup = L.layerGroup().addTo(map);
 
         streetLayer.addTo(map);
+
+        map.locate({setView: true, maxZoom: 22});
 
         const baseMaps = {
             "OpenStreetMap": osmLayer,
@@ -388,45 +407,7 @@
             }
         });
 
-        function markersToGeoJSON() {
-        const features = [];
-
-        // Add facility markers
-        facilityLayerGroup.eachLayer(function(layer) {
-            const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
-            features.push({
-                type: "Feature",
-                geometry: {
-                    type: "Point",
-                    coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
-                },
-                properties: {
-                    facilityType: facilityType
-                }
-            });
-        });
-
-        // Add route polylines
-        routeLayerGroup.eachLayer(function(layer) {
-            if (layer instanceof L.Polyline) {
-                features.push({
-                    type: "Feature",
-                    geometry: {
-                        type: "LineString",
-                        coordinates: layer.getLatLngs().map(latlng => [latlng.lng, latlng.lat])
-                    },
-                    properties: {
-                        type: "Route"
-                    }
-                });
-            }
-        });
-
-        return {
-            type: "FeatureCollection",
-            features: features
-        };
-    }
+      
 
     // Function to download the GeoJSON file
     function downloadGeoJSON() {
@@ -448,72 +429,136 @@
         finishButton.style.display='none';
 
         var latlngs = [];
-        var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup);
-        var lastLatLng = null;
-        
+var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup);
+var locationInterval;
+var lastLatLng = null;
+var marker = null;  // Store all route polylines
 
-        document.getElementById('addRoutesButton').addEventListener('click', function() {
-            map.locate({ setView: true, maxZoom: 20 });
+// Function to generate GeoJSON
+function markersToGeoJSON() {
+    const features = [];
 
-            map.on('locationfound', function(e) {
-                finishButton.style.display='block';
+    // Add facility markers (if any)
+    facilityLayerGroup.eachLayer(function(layer) {
+        const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
+        features.push({
+            type: "Feature",
+            geometry: {
+                type: "Point",
+                coordinates: [layer.getLatLng().lng, layer.getLatLng().lat]
+            },
+            properties: {
+                facilityType: facilityType
+            }
+        });
+    });
+
+    // Add route polylines
+    routeLayerGroup.eachLayer(function(layer) {
+        if (layer instanceof L.Polyline) {
+            features.push({
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: layer.getLatLngs().map(latlng => [latlng.lng, latlng.lat])
+                },
+                properties: {
+                    type: "Route"
+                }
+            });
+        }
+    });
+
+    return {
+        type: "FeatureCollection",
+        features: features
+    };
+}
+
+// Function to download the GeoJSON file
+function downloadGeoJSON() {
+    const geojson = markersToGeoJSON();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "map_data.geojson");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+document.getElementById('saveButton').addEventListener('click', downloadGeoJSON);
+
+// Start drawing routes
+document.getElementById('addRoutesButton').addEventListener('click', function() {
+    map.locate({ setView: true, watch: true, maxZoom: 16, enableHighAccuracy: true });
+
+    map.on('locationfound', function(e) {
+        var latlng = [e.latitude, e.longitude];
+
+        finishButton.style.display='block';
                 document.getElementById('saveButton').disabled = true;
-            var latlng = [e.latitude, e.longitude];
+                document.getElementById('saveButton').style.backgroundColor="#3a4192d3";
 
-            // Add the initial location to the path
-            if (latlngs.length === 0) {
-                latlngs.push(latlng);
-                polyline.setLatLngs(latlngs);
-            }
+        // Start saving the location every 2 seconds once the first location is found
+        if (!locationInterval) {
+            locationInterval = setInterval(function() {
+                if (!lastLatLng || latlng[0] !== lastLatLng[0] || latlng[1] !== lastLatLng[1]) {
+                    latlngs.push(latlng); // Save the current location
+                    polyline.setLatLngs(latlngs); // Update the polyline with new latlngs
 
-            // Store only when moved at least 0.5 meters
-            if (!lastLatLng || calculateDistance(lastLatLng, latlng) >= 0.5) {
-                latlngs.push(latlng);
-                polyline.setLatLngs(latlngs); // Update the polyline with new latlngs
-                lastLatLng = latlng; // Update last saved location
-            }
+                    // Remove the old marker if it exists
+                    if (marker) {
+                        map.removeLayer(marker);
+                    }
 
-            // Ensure the polyline is visible by updating the map view if needed
-            map.setView(latlng, map.getZoom());
-        });
+                    alert("Route Mapping Begins...")
 
-        map.on('locationerror', function() {
-            alert("Location access denied.");
-        });
+                    // Add a new blue marker at the current location
+                    marker = L.marker(latlng, {icon: L.icon({
+                        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                        shadowSize: [41, 41]
+                    })}).addTo(routeLayerGroup);
 
-        });
-
-
-        function calculateDistance(latlng1, latlng2) {
-            var R = 6371000; // Radius of the Earth in meters
-            var dLat = (latlng2[0] - latlng1[0]) * Math.PI / 180;
-            var dLng = (latlng2[1] - latlng1[1]) * Math.PI / 180;
-            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(latlng1[0] * Math.PI / 180) * Math.cos(latlng2[0] * Math.PI / 180) *
-                    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
+                    lastLatLng = latlng; // Update last saved location
+                }
+            }, 2000); // 2 seconds interval
         }
 
-        document.getElementById('finishButton').onclick = function() {
-            map.stopLocate(); // Stop tracking the location
-            document.getElementById('saveButton').disabled = false; // Enable the save button
+        // Ensure the polyline is visible by updating the map view if needed
+        map.setView(latlng, map.getZoom());
+    });
+
+    map.on('locationerror', function() {
+        alert("Location access denied.");
+    });
+});
+
+// Finish drawing the path and save to routeLayerGroup
+document.getElementById('finishButton').onclick = function() {
+    map.stopLocate(); // Stop tracking the location
+    clearInterval(locationInterval); // Stop saving the location every 2 seconds
+    document.getElementById('saveButton').disabled = false; // Enable the save button
+
+
+    console.log(polyline)
+    // Add the drawn polyline to the routeLayerGroup to be included in GeoJSON
+    routeLayerGroup.addLayer(polyline);
+
+    // Reset for the next route
+      latlngs = [];
+  //  polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup); // Create a new polyline for the next route
+
+    document.getElementById('saveButton').disabled = false; 
+            document.getElementById('saveButton').style.backgroundColor="#061d84e7";// Enable the save button
             alert("Drawing finished.");
             finishButton.style.display='none';
-            
-        };
+};
 
-        function onLocationFound(e) {
-            var latlng = [e.latitude, e.longitude];
-
-            if (latlngs.length === 0 || calculateDistance(latlngs[latlngs.length - 1], latlng) >= 0.5) {
-                latlngs.push(latlng);
-                polyline.setLatLngs(latlngs);
-                lastLatLng = latlng;
-            }
-
-            map.setView(latlng, map.getZoom());
-        }
 
     </script>
 </body>
