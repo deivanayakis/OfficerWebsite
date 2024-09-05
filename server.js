@@ -75,48 +75,56 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// Upload GeoJSON Route
-// Upload GeoJSON Route
 app.post('/uploadGeoJSON', async (req, res) => {
-    console.log("HLOO")
+    console.log("Received GeoJSON upload request");
+
     try {
         await client.connect();
         const db = client.db('railway');
-        const collection = db.collection('officers');  // Assuming you want to upsert in the same collection
+        const collection = db.collection('facility');  // Use the new 'facility' collection
 
         // Validate the content type
         if (req.headers['content-type'] !== 'application/json') {
+            console.log('Invalid Content-Type');
             return res.status(400).send({ success: false, message: 'Content-Type must be application/json' });
         }
 
         // Parse the incoming JSON
-        const geojson = req.body;
-        if (!geojson || !geojson.features) {
-            return res.status(400).send({ success: false, message: 'Invalid GeoJSON format' });
-        }
+        const data = req.body;
+        console.log('Parsed request body:', data);
 
-        // Extract stationCode from GeoJSON if it exists
-        const stationCode = geojson.features.find(f => f.properties.stationCode)?.properties.stationCode;
+        // Extract stationCode and geojson from the request body
+        const stationCode = data.stationCode;
+        const geojson = data.geojson;
 
-        if (!stationCode) {
-            return res.status(400).send({ success: false, message: 'stationCode not found in GeoJSON' });
+        if (!stationCode || !geojson || !geojson.features) {
+            console.log('Invalid data format', data);
+            return res.status(400).send({ success: false, message: 'Invalid data format' });
         }
 
         // Upsert GeoJSON data
-        await collection.updateOne(
+        const result = await collection.updateOne(
             { stationCode: stationCode },
             { $set: { geojson: geojson } },
-            { upsert: true }
+            { upsert: true }  // Insert the document if it does not exist
         );
 
-        res.send({ success: true, message: 'GeoJSON data uploaded successfully!' });
+        if (result.upsertedCount > 0) {
+            // If a new document was inserted
+            res.send({ success: true, message: 'GeoJSON data added successfully!' });
+        } else {
+            // If an existing document was updated
+            res.send({ success: true, message: 'GeoJSON data updated successfully!' });
+        }
     } catch (error) {
-        console.error('Error uploading GeoJSON data:', error);
+        console.error('Error handling GeoJSON data:', error);
         res.status(500).send({ success: false, message: 'Internal Server Error' });
     } finally {
         await client.close();
     }
 });
+
+
 
 
 app.listen(port, () => {

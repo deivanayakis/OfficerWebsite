@@ -406,38 +406,38 @@
             }
         });
 
-      
 
-    // Function to download the GeoJSON file
-    function uploadGeoJSON() {
+function uploadGeoJSON() {
     const geojson = markersToGeoJSON();
-
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
         downloadAnchorNode.setAttribute("download", "map_data.geojson");
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-    
-    fetch('http://localhost:3000/uploadGeoJSON', {  // Update with your server URL if different
+        downloadAnchorNode.remove(); 
+    const data = {
+        stationCode: stationCode,
+        geojson: geojson
+    };
+
+    fetch('http://localhost:3000/uploadGeoJSON', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         },
-        body: JSON.stringify(geojson)
+        body: JSON.stringify(data)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('GeoJSON data uploaded successfully!');
+            console.log('Success:', data.message);
         } else {
-            alert('Error uploading GeoJSON data.');
+            console.error('Error:', data.message);
         }
     })
-    .catch(error => {
+    .catch((error) => {
         console.error('Error:', error);
-        alert('Error uploading GeoJSON data.');
     });
 }
 
