@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Officer Website</title>
     <link rel="stylesheet" href="dist/leaflet.css" />
-    <link rel="stylesheet" href="leaflet-control-geocoder-2.4.0/dist/Control.Geocoder.css" />
     <style>
         body {
             margin: 0;
@@ -47,7 +46,7 @@
         }
 
         #finishButton{
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             left:70px;
             transform: translateX(-50%);
@@ -63,7 +62,7 @@
         }
 
         #saveButton {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -410,18 +409,39 @@
       
 
     // Function to download the GeoJSON file
-    function downloadGeoJSON() {
-        const geojson = markersToGeoJSON();
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
+    function uploadGeoJSON() {
+    const geojson = markersToGeoJSON();
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
         downloadAnchorNode.setAttribute("download", "map_data.geojson");
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
-    }
+    
+    fetch('http://localhost:3000/uploadGeoJSON', {  // Update with your server URL if different
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(geojson)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('GeoJSON data uploaded successfully!');
+        } else {
+            alert('Error uploading GeoJSON data.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error uploading GeoJSON data.');
+    });
+}
 
-    document.getElementById('saveButton').addEventListener('click', downloadGeoJSON);
+document.getElementById('saveButton').addEventListener('click', uploadGeoJSON);
 
         //Routes
 
@@ -432,13 +452,9 @@
 var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup);
 var locationInterval;
 var lastLatLng = null;
-var marker = null;  // Store all route polylines
-
-// Function to generate GeoJSON
+var marker = null;
 function markersToGeoJSON() {
     const features = [];
-
-    // Add facility markers (if any)
     facilityLayerGroup.eachLayer(function(layer) {
         const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
         features.push({
@@ -452,8 +468,6 @@ function markersToGeoJSON() {
             }
         });
     });
-
-    // Add route polylines
     routeLayerGroup.eachLayer(function(layer) {
         if (layer instanceof L.Polyline) {
             features.push({
@@ -475,46 +489,24 @@ function markersToGeoJSON() {
     };
 }
 
-// Function to download the GeoJSON file
-function downloadGeoJSON() {
-    const geojson = markersToGeoJSON();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "map_data.geojson");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-}
 
-document.getElementById('saveButton').addEventListener('click', downloadGeoJSON);
 
-// Start drawing routes
 document.getElementById('addRoutesButton').addEventListener('click', function() {
     map.locate({ setView: true, watch: true, maxZoom: 16, enableHighAccuracy: true });
-
     map.on('locationfound', function(e) {
         var latlng = [e.latitude, e.longitude];
-
         finishButton.style.display='block';
-                document.getElementById('saveButton').disabled = true;
-                document.getElementById('saveButton').style.backgroundColor="#3a4192d3";
-
-        // Start saving the location every 2 seconds once the first location is found
+        document.getElementById('saveButton').style.backgroundColor="#3a4192d3";
         if (!locationInterval) {
             locationInterval = setInterval(function() {
                 if (!lastLatLng || latlng[0] !== lastLatLng[0] || latlng[1] !== lastLatLng[1]) {
-                    latlngs.push(latlng); // Save the current location
-                    polyline.setLatLngs(latlngs); // Update the polyline with new latlngs
-
-                    // Remove the old marker if it exists
+                    latlngs.push(latlng);
+                    polyline.setLatLngs(latlngs);
                     if (marker) {
                         map.removeLayer(marker);
                     }
-
                     alert("Route Mapping Begins...")
-
-                    // Add a new blue marker at the current location
+                    document.getElementById('saveButton').disabled = true;
                     marker = L.marker(latlng, {icon: L.icon({
                         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
                         iconSize: [25, 41],
@@ -524,12 +516,10 @@ document.getElementById('addRoutesButton').addEventListener('click', function() 
                         shadowSize: [41, 41]
                     })}).addTo(routeLayerGroup);
 
-                    lastLatLng = latlng; // Update last saved location
+                    lastLatLng = latlng;
                 }
-            }, 2000); // 2 seconds interval
+            }, 2000); 
         }
-
-        // Ensure the polyline is visible by updating the map view if needed
         map.setView(latlng, map.getZoom());
     });
 
@@ -538,23 +528,14 @@ document.getElementById('addRoutesButton').addEventListener('click', function() 
     });
 });
 
-// Finish drawing the path and save to routeLayerGroup
 document.getElementById('finishButton').onclick = function() {
-    map.stopLocate(); // Stop tracking the location
-    clearInterval(locationInterval); // Stop saving the location every 2 seconds
-    document.getElementById('saveButton').disabled = false; // Enable the save button
-
-
-    console.log(polyline)
-    // Add the drawn polyline to the routeLayerGroup to be included in GeoJSON
+    map.stopLocate();
+    clearInterval(locationInterval);
+    document.getElementById('saveButton').disabled = false;
     routeLayerGroup.addLayer(polyline);
-
-    // Reset for the next route
-      latlngs = [];
-  //  polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup); // Create a new polyline for the next route
-
+    latlngs = [];
     document.getElementById('saveButton').disabled = false; 
-            document.getElementById('saveButton').style.backgroundColor="#061d84e7";// Enable the save button
+            document.getElementById('saveButton').style.backgroundColor="#061d84e7";
             alert("Drawing finished.");
             finishButton.style.display='none';
 };
