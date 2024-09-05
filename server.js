@@ -125,6 +125,33 @@ app.post('/uploadGeoJSON', async (req, res) => {
 });
 
 
+app.get('/getGeoJSON/:stationCode', async (req, res) => {
+    console.log("Received GeoJSON retrieval request");
+
+    try {
+        await client.connect();
+        const db = client.db('railway');
+        const collection = db.collection('facility');  // Use the 'facility' collection
+
+        const { stationCode } = req.params;
+        
+        // Find the document with the given stationCode
+        const document = await collection.findOne({ stationCode: stationCode });
+
+        if (!document || !document.geojson) {
+            return res.status(404).send({ success: false, message: 'GeoJSON data not found' });
+        }
+
+        res.send({ success: true, geojson: document.geojson });
+    } catch (error) {
+        console.error('Error retrieving GeoJSON data:', error);
+        res.status(500).send({ success: false, message: 'Internal Server Error' });
+    } finally {
+        await client.close();
+    }
+});
+
+
 
 
 app.listen(port, () => {
