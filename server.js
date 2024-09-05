@@ -75,6 +75,34 @@ app.post('/login', async (req, res) => {
     }
 });
 
+
+// Function to get station details from MongoDB
+async function getStationDetails(stationName) {
+   try {
+        await client.connect();
+        const db = client.db('railway');
+        const collection = db.collection('stations');
+        const stationDetails = await collection.findOne({ name: stationName });
+        return stationDetails;
+    } finally {
+        await client.close();
+    }
+}
+// Route to get station details
+app.get('/getStationGeoJson/:stationName', async (req, res) => {
+    const stationName = req.params.stationName;
+    try {
+        const stationDetails = await getStationDetails(stationName);
+        if (stationDetails) {
+            res.json(stationDetails);
+        } else {
+            res.status(404).send('Station not found');
+        }
+    } catch (error) {
+        res.status(500).send('Error retrieving station details');
+    }
+});
+
 // Upload GeoJSON Route
 // Upload GeoJSON Route
 app.post('/uploadGeoJSON', async (req, res) => {
@@ -117,7 +145,6 @@ app.post('/uploadGeoJSON', async (req, res) => {
         await client.close();
     }
 });
-
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
