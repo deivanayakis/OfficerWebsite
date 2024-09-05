@@ -507,7 +507,20 @@ var marker = null;
 function markersToGeoJSON() {
     const features = [];
     facilityLayerGroup.eachLayer(function(layer) {
-        const facilityType = markerData.get(layer) || layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1];
+        console.log("HI"+layer);
+        const facilityType = markerData.get(layer) || (
+  layer.getPopup() && 
+  layer.getPopup().getContent() && 
+  layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)
+    ? layer.getPopup().getContent().match(/<strong>([^<]+)<\/strong>/)[1]
+    : 'Unknown'
+);
+
+if (facilityType=='Unknown')
+{
+    console.log("UUUU")
+    return;
+}
         features.push({
             type: "Feature",
             geometry: {
