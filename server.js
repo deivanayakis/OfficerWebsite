@@ -75,6 +75,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
+
 // Function to get station details from MongoDB
 async function getStationDetails(stationName) {
    try {
@@ -102,7 +103,48 @@ app.get('/getStationGeoJson/:stationName', async (req, res) => {
     }
 });
 
+// Upload GeoJSON Route
+// Upload GeoJSON Route
+app.post('/uploadGeoJSON', async (req, res) => {
+    console.log("HLOO")
+    try {
+        await client.connect();
+        const db = client.db('railway');
+        const collection = db.collection('officers');  // Assuming you want to upsert in the same collection
 
+        // Validate the content type
+        if (req.headers['content-type'] !== 'application/json') {
+            return res.status(400).send({ success: false, message: 'Content-Type must be application/json' });
+        }
+
+        // Parse the incoming JSON
+        const geojson = req.body;
+        if (!geojson || !geojson.features) {
+            return res.status(400).send({ success: false, message: 'Invalid GeoJSON format' });
+        }
+
+        // Extract stationCode from GeoJSON if it exists
+        const stationCode = geojson.features.find(f => f.properties.stationCode)?.properties.stationCode;
+
+        if (!stationCode) {
+            return res.status(400).send({ success: false, message: 'stationCode not found in GeoJSON' });
+        }
+
+        // Upsert GeoJSON data
+        await collection.updateOne(
+            { stationCode: stationCode },
+            { $set: { geojson: geojson } },
+            { upsert: true }
+        );
+
+        res.send({ success: true, message: 'GeoJSON data uploaded successfully!' });
+    } catch (error) {
+        console.error('Error uploading GeoJSON data:', error);
+        res.status(500).send({ success: false, message: 'Internal Server Error' });
+    } finally {
+        await client.close();
+    }
+});
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
