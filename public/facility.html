@@ -329,36 +329,49 @@
 
 
         function loadGeoJSON(stationCode) {
-            console.log(stationCode);
-            fetch(`http://localhost:3000/getGeoJSON/${stationCode}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.geojson) {
-                        // Add the GeoJSON data to the map
-                        L.geoJSON(data.geojson, {
-                            onEachFeature: function (feature, layer) {
-                                if (feature.properties) {
-                                    const mPopupContent = `
-                        <div class="popup-content">
-                            <p><strong>${feature.properties.facilityType}</strong></p>
-                            <button id="updateFacility">Update</button>
-                            <button id="deleteFacility">Delete</button>
-                        </div>
-                    `;
-                                    layer.bindPopup(mPopupContent);
-                                }
-                            }
-                        }).addTo(facilityLayerGroup);
-                    } else {
-                        console.error('Failed to load GeoJSON data:', data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching GeoJSON data:', error);
-                });
-        }
+    console.log(stationCode);
+    fetch(`http://localhost:3000/getGeoJSON/${stationCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.geojson) {
+                // Iterate through the GeoJSON features and add them as markers to the facilityLayerGroup
+                L.geoJSON(data.geojson, {
+                    onEachFeature: function (feature, layer) {
+                        if (feature.geometry && feature.geometry.type === "Point") {
+                            // Get the latitude and longitude from the feature geometry
+                            const latLng = [
+                                feature.geometry.coordinates[1],  // Latitude
+                                feature.geometry.coordinates[0]   // Longitude
+                            ];
 
-        loadGeoJSON(stationCode);
+                            // Create a marker at the feature's location
+                            const marker = L.marker(latLng).addTo(facilityLayerGroup);
+
+                            // Create the popup content based on feature properties
+                            const mPopupContent = `
+                                <div class="popup-content">
+                                    <p><strong>${feature.properties.facilityType}</strong></p>
+                                    <button id="updateFacility">Update</button>
+                                    <button id="deleteFacility">Delete</button>
+                                </div>
+                            `;
+
+                            // Bind the popup to the marker
+                            marker.bindPopup(mPopupContent);
+                        }
+                    }
+                }).addTo(facilityLayerGroup);
+            } else {
+                console.error('Failed to load GeoJSON data:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching GeoJSON data:', error);
+        });
+}
+
+loadGeoJSON(stationCode);
+
 
         //
 
