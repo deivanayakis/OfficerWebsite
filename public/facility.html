@@ -221,7 +221,7 @@
         });
 
         const streetLayer =  L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
-                maxZoom: 22,
+                maxZoom: 25,
                 subdomains:['mt0','mt1','mt2','mt3']
         });
 
@@ -376,7 +376,7 @@ loadGeoJSON(stationCode);
         //
 
         document.getElementById('addFacilityButton').addEventListener('click', function() {
-            map.locate({ setView: true, maxZoom: 16 });
+            map.locate({ setView: true, maxZoom: 22 });
             map.once('locationfound', function(e) {
                 showFacilityPopup(e);
             });
@@ -556,7 +556,7 @@ if (facilityType=='Unknown')
 
 
 document.getElementById('addRoutesButton').addEventListener('click', function() {
-    map.locate({ setView: true, watch: true, maxZoom: 16, enableHighAccuracy: true });
+    map.locate({ setView: true, watch: true, maxZoom: 22, enableHighAccuracy: true });
     map.on('locationfound', function(e) {
         var latlng = [e.latitude, e.longitude];
         finishButton.style.display='block';
