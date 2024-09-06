@@ -370,7 +370,10 @@
         });
 }
 
+
 loadGeoJSON(stationCode);
+
+streetLayer.addTo(map);
 
 
         //
@@ -508,6 +511,7 @@ map.locate({ setView: true, watch: true, maxZoom: 16, enableHighAccuracy: true }
 
 document.getElementById('addRoutesButton').onclick = function() {
     console.log("Begin")
+    finishButton.style.display = 'block'; 
     map.on('locationfound', function(e) {
         // Use the real-time location
         var latlng = [e.latitude, e.longitude];
@@ -591,6 +595,7 @@ if (facilityType=='Unknown')
         });
     });
     routeLayerGroup.eachLayer(function(layer) {
+        console.log("HLLO")
         if (layer instanceof L.Polyline) {
             features.push({
                 type: "Feature",
