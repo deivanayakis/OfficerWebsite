@@ -496,14 +496,72 @@ document.getElementById('saveButton').addEventListener('click', uploadGeoJSON);
 
         //Routes
 
-        const finishButton=document.getElementById('finishButton');
-        finishButton.style.display='none';
+        let latlngs = []; // Array to store all lat/lng points for the route
+let polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map); // Create polyline
+let lastLatLng = null; // To store the last lat/lng point
+let marker = null; // To store the current marker
+const finishButton = document.getElementById('finishButton');
+finishButton.style.display = 'none'; // Initially hide the finish button
 
-        var latlngs = [];
-var polyline = L.polyline(latlngs, { color: 'blue' }).addTo(routeLayerGroup);
-var locationInterval;
-var lastLatLng = null;
-var marker = null;
+// Enable location tracking and draw the path
+map.locate({ setView: true, watch: true, maxZoom: 16, enableHighAccuracy: true });
+
+document.getElementById('addRoutesButton').onclick = function() {
+    console.log("Begin")
+    map.on('locationfound', function(e) {
+        // Use the real-time location
+        var latlng = [e.latitude, e.longitude];
+        console.log("Current Location"+latlng)
+        // Check if latlngs array is empty and add the initial location
+        if (latlngs.length === 0) {
+            latlngs.push(latlng); // Add the first location
+            polyline.setLatLngs(latlngs); // Update the polyline with the first point
+        }
+
+        // If location has changed, store and update the polyline
+        if (!lastLatLng || latlng[0] !== lastLatLng[0] || latlng[1] !== lastLatLng[1]) {
+            latlngs.push(latlng); // Save the current location in latlngs array
+            polyline.setLatLngs(latlngs); // Update the polyline with new lat/lng
+
+            // Remove the old marker if it exists
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            // Add a new marker at the current location
+            marker = L.marker(latlng, {
+                icon: L.icon({
+                    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                    shadowSize: [41, 41]
+                })
+            }).addTo(routeLayerGroup);
+
+            lastLatLng = latlng; // Update the last saved location
+        }
+
+        // Ensure the polyline is visible by updating the map view if needed
+        map.setView(latlng, map.getZoom());
+    });
+
+    map.on('locationerror', function() {
+        alert("Location access denied.");
+    });
+};
+
+// Finish drawing the path
+document.getElementById('finishButton').onclick = function() {
+    finishButton.style.display = 'none';
+    document.getElementById('saveButton').style.backgroundColor = "#061d84e7";
+    map.stopLocate(); // Stop tracking the location
+    document.getElementById('saveButton').disabled = false; // Enable the save button
+    alert("Drawing finished.");
+};
+
+        
 function markersToGeoJSON() {
     const features = [];
     facilityLayerGroup.eachLayer(function(layer) {
@@ -555,54 +613,6 @@ if (facilityType=='Unknown')
 
 
 
-document.getElementById('addRoutesButton').addEventListener('click', function() {
-    map.locate({ setView: true, watch: true, maxZoom: 22, enableHighAccuracy: true });
-    map.on('locationfound', function(e) {
-        var latlng = [e.latitude, e.longitude];
-        finishButton.style.display='block';
-        document.getElementById('saveButton').style.backgroundColor="#3a4192d3";
-        if (!locationInterval) {
-            locationInterval = setInterval(function() {
-                if (!lastLatLng || latlng[0] !== lastLatLng[0] || latlng[1] !== lastLatLng[1]) {
-                    latlngs.push(latlng);
-                    polyline.setLatLngs(latlngs);
-                    if (marker) {
-                        map.removeLayer(marker);
-                    }
-                    alert("Route Mapping Begins...")
-                    document.getElementById('saveButton').disabled = true;
-                    marker = L.marker(latlng, {icon: L.icon({
-                        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-                        iconSize: [25, 41],
-                        iconAnchor: [12, 41],
-                        popupAnchor: [1, -34],
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-                        shadowSize: [41, 41]
-                    })}).addTo(routeLayerGroup);
-
-                    lastLatLng = latlng;
-                }
-            }, 2000); 
-        }
-        map.setView(latlng, map.getZoom());
-    });
-
-    map.on('locationerror', function() {
-        alert("Location access denied.");
-    });
-});
-
-document.getElementById('finishButton').onclick = function() {
-    map.stopLocate();
-    clearInterval(locationInterval);
-    document.getElementById('saveButton').disabled = false;
-    routeLayerGroup.addLayer(polyline);
-    latlngs = [];
-    document.getElementById('saveButton').disabled = false; 
-            document.getElementById('saveButton').style.backgroundColor="#061d84e7";
-            alert("Drawing finished.");
-            finishButton.style.display='none';
-};
 
 
     </script>
