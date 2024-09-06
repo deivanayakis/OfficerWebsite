@@ -309,7 +309,10 @@
 
             fetch('http://localhost:3000/register', {
                 method: 'POST',
-                body: formData
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
             })
             .then(response => response.json())  // Parse response as JSON
             .then(result => {
